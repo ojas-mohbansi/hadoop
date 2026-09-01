@@ -86,11 +86,18 @@ html[data-theme="dark"]{
    2. RESET
    ========================================================================== */
 *,*::before,*::after{box-sizing:border-box;}
-html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+html{
+  -webkit-text-size-adjust:100%;scroll-behavior:smooth;
+  overflow-x:hidden;
+  width:100%;
+}
 body{
   margin:0;background:var(--bg);color:var(--text);font-family:var(--font-sans);
   font-size:16px;line-height:1.6;min-height:100vh;
   transition:background .25s ease,color .25s ease;
+  overflow-x:hidden;
+  width:100%;
+  position:relative;
 }
 img,svg{max-width:100%;display:block;}
 button{font:inherit;}
@@ -362,8 +369,10 @@ html[data-theme="dark"] .brand-mark{color:#04180A;}
 .step-checkmark.show{display:inline-flex;}
 
 .config-grid{display:grid;grid-template-columns:1fr;gap:18px;margin-top:16px;}
-@media (min-width:760px){.config-grid{grid-template-columns:repeat(2,1fr);}}
-.config-card{padding:16px 16px 4px;border:1.5px solid var(--border-soft);border-radius:6px;background:var(--surface-2);}
+.config-card{padding:16px 16px 4px;border:1.5px solid var(--border-soft);border-radius:6px;background:var(--surface-2);min-width:0;}
+/* Keep the shell/code boxes in section 08 the same rendered width as every
+   other section's shell boxes by cancelling out this card's extra inset. */
+.config-card .terminal{margin-left:-17.5px;margin-right:-17.5px;}
 .config-card h4{margin-top:0 !important;}
 .config-card.wide{grid-column:1/-1;}
 
@@ -383,9 +392,11 @@ html[data-theme="dark"] .brand-mark{color:#04180A;}
   transform:translateY(-65%) rotate(-45deg);
 }
 
-.url-table-wrap{overflow:auto;margin:16px 0 4px;border:2px solid var(--border);border-radius:8px;max-width:62ch;}
-table{width:100%;min-width:340px;border-collapse:collapse;}
-th,td{padding:12px 15px;text-align:left;border-bottom:1.5px solid var(--border-soft);}
+.url-table-wrap{overflow:auto;margin:16px 0 4px;border:2px solid var(--border);border-radius:8px;}
+table{width:100%;table-layout:fixed;border-collapse:collapse;}
+th:first-child,td:first-child{width:32%;}
+th:last-child,td:last-child{width:68%;}
+th,td{padding:12px 15px;text-align:left;border-bottom:1.5px solid var(--border-soft);word-break:break-word;}
 tr:last-child td{border-bottom:0;}
 th{font-family:var(--font-mono);font-size:.64rem;font-weight:700;background:var(--surface-2);letter-spacing:.04em;}
 td{font-size:.92rem;}
@@ -417,6 +428,23 @@ html[data-theme="dark"] td a{color:var(--green);}
 .copy-btn.is-copied{background:var(--green);border-color:var(--green);color:var(--green-ink);}
 pre{margin:0;overflow:auto;max-height:520px;padding:15px 17px;}
 pre code{color:#EDEEE4;font-size:.84rem;line-height:1.68;white-space:pre;font-family:var(--font-mono);}
+/* Section 8 (Daily operations): the multi-command aliases and PowerShell functions
+   are long enough to overflow the terminal card on narrow viewports. Wrap them
+   instead of forcing a horizontal scrollbar inside the code block. */
+#daily-ops pre{overflow-x:hidden;}
+#daily-ops pre code{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;}
+
+/* Neo-brutalist scrollbar for the tall XML blocks in 8.3 / 8.4: flat fill,
+   hard black edges, square corners — no native rounded/blurred chrome. */
+pre.brutal-scroll{scrollbar-width:thin;scrollbar-color:var(--green) var(--surface-dark);}
+pre.brutal-scroll::-webkit-scrollbar{width:14px;height:14px;}
+pre.brutal-scroll::-webkit-scrollbar-track{background:var(--surface-dark);border-left:2px solid var(--border);}
+pre.brutal-scroll::-webkit-scrollbar-thumb{
+  background:var(--green);border:2px solid var(--border);border-radius:0;
+  box-shadow:inset 0 0 0 2px var(--surface-dark);
+}
+pre.brutal-scroll::-webkit-scrollbar-thumb:hover{background:var(--yellow);}
+pre.brutal-scroll::-webkit-scrollbar-corner{background:var(--surface-dark);}
 .term-prompt{color:var(--green);user-select:none;}
 .term-comment{color:#7C8577;}
 
@@ -986,7 +1014,7 @@ mkdir -p /usr/local/hadoop/data/datanode</code></pre></div></div>
             <div class="config-card">
               <h4>8.3 <code>mapred-site.xml</code></h4>
               <p>Use:</p>
-              <div class="terminal"><div class="terminal-frame"><div class="terminal-top"><div class="terminal-top-left"><span class="terminal-dots"><span></span><span></span><span></span></span><span class="terminal-label">xml</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+              <div class="terminal"><div class="terminal-frame"><div class="terminal-top"><div class="terminal-top-left"><span class="terminal-dots"><span></span><span></span><span></span></span><span class="terminal-label">xml</span></div><button class="copy-btn" type="button">Copy</button></div><pre class="brutal-scroll"><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
 &lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;
 &lt;configuration&gt;
     &lt;property&gt;
@@ -1011,7 +1039,7 @@ mkdir -p /usr/local/hadoop/data/datanode</code></pre></div></div>
             <div class="config-card">
               <h4>8.4 <code>yarn-site.xml</code></h4>
               <p>Use:</p>
-              <div class="terminal"><div class="terminal-frame"><div class="terminal-top"><div class="terminal-top-left"><span class="terminal-dots"><span></span><span></span><span></span></span><span class="terminal-label">xml</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+              <div class="terminal"><div class="terminal-frame"><div class="terminal-top"><div class="terminal-top-left"><span class="terminal-dots"><span></span><span></span><span></span></span><span class="terminal-label">xml</span></div><button class="copy-btn" type="button">Copy</button></div><pre class="brutal-scroll"><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
 &lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;
 &lt;configuration&gt;
     &lt;property&gt;
