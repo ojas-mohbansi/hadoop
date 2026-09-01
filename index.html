@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="A field-manual style, accessible single-node Apache Hadoop 3.5.0 setup guide for Ubuntu on WSL 2.">
+<meta name="theme-color" content="#F4F1E8">
+<title>Hadoop 3.5.0 on WSL 2 — Field Manual</title>
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  --bg:#F4F1E8;
+  --surface:#FFFDF5;
+  --surface-alt:#E8E3D5;
+  --text:#111111;
+  --muted:#5B5B55;
+  --border:#111111;
+  --green:#39E75F;
+  --green-dark:#15803D;
+  --yellow:#FFD84D;
+  --orange:#FF8A3D;
+  --red:#FF5A5F;
+  --blue:#4EA5FF;
+  --code-bg:#111411;
+  --code-top:#1B1F1B;
+  --code-text:#EDEFE9;
+  --code-line:#33362f;
+  --ink-on-green:#08150C;
+  --bw:3px;
+  --bw-lg:4px;
+  --sh:6px;
+  --sh-lg:9px;
+  --radius:0px;
+  --rail:296px;
+  --header:68px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+html[data-theme="dark"]{
+  --bg:#101310;
+  --surface:#191D19;
+  --surface-alt:#20251F;
+  --text:#F5F4EC;
+  --muted:#A9B0A4;
+  --border:#F5F4EC;
+  --green:#39E75F;
+  --green-dark:#7CF29A;
+  --yellow:#FFD84D;
+  --orange:#FF9A57;
+  --red:#FF6E72;
+  --blue:#79B8FF;
+  --code-bg:#05070A;
+  --code-top:#0B0E0B;
+  --code-text:#E7EEE7;
+  --code-line:#212821;
+  --ink-on-green:#08150C;
+}
+
+/* ============================================================
+   RESET / BASE
+   ============================================================ */
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-sans);
+  line-height:1.6;
+  min-height:100vh;
+}
+body::before{
+  content:"";
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 6%, transparent) 1px, transparent 1px);
+  background-size:56px 56px;
+  opacity:.6;
+}
+a{color:inherit;}
+img{max-width:100%;display:block;}
+button{font:inherit;}
+button,a{-webkit-tap-highlight-color:transparent;}
+::selection{background:var(--green);color:var(--ink-on-green);}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px;}
+h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.02em;}
+p{margin:0 0 14px;color:var(--muted);}
+p:last-child{margin-bottom:0;}
+ol,ul{padding-left:1.35rem;color:var(--muted);margin:0 0 14px;}
+ol:last-child,ul:last-child{margin-bottom:0;}
+li{margin:7px 0;}
+li::marker{color:var(--green-dark);font-weight:800;}
+strong{color:var(--text);font-weight:800;}
+code{font-family:var(--font-mono);}
+:not(pre)>code{
+  padding:.12em .4em;border:var(--bw) solid var(--border);border-radius:var(--radius);
+  background:var(--surface-alt);color:var(--text);font-size:.85em;font-weight:700;
+}
+
+.skip-link{
+  position:fixed;left:14px;top:-60px;z-index:5000;padding:12px 16px;
+  background:var(--green);color:var(--ink-on-green);border:var(--bw) solid var(--border);
+  font-weight:900;text-decoration:none;font-family:var(--font-mono);text-transform:uppercase;
+  letter-spacing:.06em;font-size:.8rem;transition:top .15s ease;
+}
+.skip-link:focus{top:14px;}
+
+/* reading progress */
+.progress{position:fixed;top:0;left:0;right:0;height:4px;background:var(--surface-alt);z-index:2100;border-bottom:1px solid var(--border);}
+.progress>span{display:block;height:100%;width:0;background:var(--green);transition:width .08s linear;}
+
+/* ============================================================
+   TOPBAR
+   ============================================================ */
+.topbar{
+  position:sticky;top:0;z-index:1900;min-height:var(--header);
+  background:var(--bg);border-bottom:var(--bw) solid var(--border);
+}
+.topbar-inner{
+  max-width:1440px;margin:0 auto;min-height:var(--header);
+  display:flex;align-items:center;gap:14px;padding:0 20px;
+}
+.menu-btn{display:none;}
+.brand{display:inline-flex;align-items:center;gap:10px;text-decoration:none;min-width:0;color:var(--text);}
+.brand-mark{
+  width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;
+  background:var(--green);color:var(--ink-on-green);border:var(--bw) solid var(--border);
+  font-weight:950;font-family:var(--font-mono);box-shadow:3px 3px 0 var(--border);
+}
+.brand-text{min-width:0;line-height:1.2;}
+.brand-title{font-size:.95rem;font-weight:900;letter-spacing:-.01em;white-space:nowrap;}
+.brand-sub{
+  display:block;margin-top:1px;color:var(--muted);font-family:var(--font-mono);
+  font-size:.63rem;text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;
+}
+.topbar-spacer{flex:1;}
+.topbar-actions{display:flex;align-items:center;gap:8px;}
+.tb-btn,.tb-link{
+  min-width:38px;min-height:38px;border:var(--bw) solid var(--border);border-radius:var(--radius);
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;
+  background:var(--surface);color:var(--text);text-decoration:none;
+  font-family:var(--font-mono);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+  cursor:pointer;box-shadow:3px 3px 0 var(--border);
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.tb-btn:hover,.tb-link:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--border);}
+.tb-btn:active,.tb-link:active{transform:translate(1px,1px);box-shadow:2px 2px 0 var(--border);}
+.tb-link .arrow{color:var(--green-dark);}
+.search-trigger{width:auto;min-width:200px;justify-content:space-between;color:var(--muted);}
+.search-trigger .kbd{
+  padding:2px 6px;border:2px solid var(--border);background:var(--surface-alt);color:var(--text);
+  font-size:.62rem;font-weight:900;
+}
+
+/* ============================================================
+   SEARCH OVERLAY
+   ============================================================ */
+.search-overlay{
+  position:fixed;inset:0;z-index:3000;display:none;
+  background:color-mix(in srgb, var(--border) 55%, transparent);
+  padding:12vh 18px 0;
+}
+.search-overlay.open{display:block;}
+.search-panel{
+  max-width:640px;margin:0 auto;background:var(--surface);
+  border:var(--bw-lg) solid var(--border);box-shadow:10px 10px 0 var(--border);
+}
+.search-field{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:var(--bw) solid var(--border);}
+.search-field .glyph{font-family:var(--font-mono);font-weight:900;color:var(--green-dark);font-size:1.1rem;}
+.search-field input{
+  flex:1;border:0;background:transparent;outline:none;color:var(--text);
+  font-family:var(--font-mono);font-size:1rem;
+}
+.search-field input::placeholder{color:var(--muted);}
+.search-esc{
+  font-family:var(--font-mono);font-size:.62rem;font-weight:800;color:var(--muted);
+  border:2px solid var(--border);padding:3px 6px;text-transform:uppercase;
+}
+.search-results{max-height:58vh;overflow:auto;}
+.search-result{
+  display:flex;align-items:center;gap:12px;padding:13px 18px;text-decoration:none;color:var(--text);
+  border-bottom:1px solid var(--surface-alt);font-size:.88rem;
+}
+.search-result:hover,.search-result.is-active{background:var(--surface-alt);}
+.search-result .idx{
+  font-family:var(--font-mono);font-size:.68rem;font-weight:900;color:var(--green-dark);
+  min-width:28px;
+}
+.search-empty{padding:28px 18px;color:var(--muted);font-size:.85rem;text-align:center;}
+mark{background:var(--yellow);color:#111;padding:0 2px;font-weight:800;}
+
+/* ============================================================
+   SHELL / LAYOUT
+   ============================================================ */
+.shell{
+  max-width:1440px;margin:0 auto;padding:28px 20px 90px;
+  display:grid;grid-template-columns:var(--rail) minmax(0,1fr);gap:28px;
+  position:relative;z-index:1;
+}
+.sidebar{
+  position:sticky;top:calc(var(--header) + 20px);align-self:start;
+  max-height:calc(100vh - var(--header) - 40px);overflow:auto;
+  border:var(--bw) solid var(--border);background:var(--surface);
+  box-shadow:5px 5px 0 var(--border);
+}
+.sidebar-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:var(--bw) solid var(--border);background:var(--surface-alt);
+}
+.sidebar-title{
+  font-family:var(--font-mono);font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:.14em;
+}
+.sidebar-progress{font-family:var(--font-mono);font-size:.7rem;font-weight:900;color:var(--green-dark);}
+.mobile-search-btn{display:none;}
+.toc{display:grid;padding:8px;gap:2px;}
+.toc-link{
+  display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:8px;
+  padding:9px 8px;text-decoration:none;color:var(--muted);font-size:.82rem;font-weight:700;
+  border:2px solid transparent;position:relative;
+}
+.toc-link:hover{background:var(--surface-alt);color:var(--text);}
+.toc-link[aria-current="true"]{
+  background:var(--green);color:var(--ink-on-green);border-color:var(--border);
+  box-shadow:3px 3px 0 var(--border);font-weight:900;
+}
+.toc-index{font-family:var(--font-mono);font-size:.68rem;font-weight:900;color:inherit;opacity:.75;}
+.toc-link[aria-current="true"] .toc-index{opacity:1;}
+.toc-divider{height:var(--bw);margin:8px 10px;background:var(--border);}
+.sidebar-meta{padding:14px 16px;border-top:var(--bw) solid var(--border);}
+.meta-row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:.72rem;}
+.meta-row dt{color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.05em;font-size:.62rem;}
+.meta-row dd{margin:0;font-weight:800;text-align:right;}
+.sidebar-note{padding:14px 16px;border-top:var(--bw) solid var(--border);background:var(--surface-alt);color:var(--muted);font-size:.72rem;line-height:1.6;}
+.sidebar-note strong{color:var(--text);}
+.search-hidden{display:none !important;}
+
+main{min-width:0;}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.hero{
+  position:relative;border:var(--bw-lg) solid var(--border);background:var(--surface);
+  box-shadow:8px 8px 0 var(--border);padding:44px 40px;margin-bottom:22px;overflow:hidden;
+}
+.hero-kicker{
+  display:flex;align-items:center;gap:10px;font-family:var(--font-mono);
+  font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);
+}
+.hero-kicker .dot{width:8px;height:8px;background:var(--green);border:2px solid var(--border);flex:0 0 auto;}
+.hero h1{
+  margin:18px 0 16px;font-size:clamp(2.6rem,6.4vw,5rem);line-height:.94;letter-spacing:-.035em;
+}
+.hero h1 .accent{
+  display:inline-block;background:var(--green);color:var(--ink-on-green);
+  padding:.02em .18em;border:var(--bw) solid var(--border);box-shadow:4px 4px 0 var(--border);
+}
+.hero-lead{max-width:640px;font-size:1.05rem;color:var(--muted);}
+.hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px;}
+.tag{
+  padding:7px 11px;border:var(--bw) solid var(--border);background:var(--surface-alt);
+  font-family:var(--font-mono);font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+}
+.tag.is-green{background:var(--green);color:var(--ink-on-green);}
+.hero-cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px;}
+.btn{
+  min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:0 20px;border:var(--bw) solid var(--border);text-decoration:none;cursor:pointer;
+  font-weight:900;font-size:.86rem;box-shadow:5px 5px 0 var(--border);
+  transition:transform .12s ease, box-shadow .12s ease;background:var(--surface);color:var(--text);
+}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--border);}
+.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--border);}
+.btn-primary{background:var(--green);color:var(--ink-on-green);}
+.hero-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);margin-top:32px;
+  border:var(--bw) solid var(--border);background:var(--surface-alt);
+}
+.hero-stat{padding:16px 14px;border-right:var(--bw) solid var(--border);}
+.hero-stat:last-child{border-right:0;}
+.hero-stat strong{display:block;font-size:1.7rem;font-family:var(--font-mono);letter-spacing:-.03em;}
+.hero-stat span{display:block;margin-top:2px;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+.hero-notice{
+  margin-top:24px;padding:16px 18px;border:var(--bw) solid var(--border);
+  border-left:8px solid var(--blue);background:var(--surface-alt);color:var(--muted);font-size:.86rem;
+}
+.hero-notice strong{color:var(--text);}
+.corner-mark{
+  position:absolute;font-family:var(--font-mono);font-size:.62rem;color:var(--muted);
+  letter-spacing:.05em;opacity:.7;
+}
+.corner-mark.tl{top:14px;left:14px;}
+.corner-mark.tr{top:14px;right:16px;}
+
+/* ============================================================
+   SECTION CARDS
+   ============================================================ */
+section.card{
+  position:relative;margin:18px 0;border:var(--bw) solid var(--border);background:var(--surface);
+  box-shadow:6px 6px 0 var(--border);padding:32px 34px;scroll-margin-top:calc(var(--header) + 24px);
+}
+section.card.is-active{box-shadow:6px 6px 0 var(--green-dark);border-color:var(--border);}
+.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+.section-kicker{
+  display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);
+  font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.14em;color:var(--green-dark);
+}
+.section-kicker::before{content:"";width:20px;height:2px;background:var(--green-dark);display:inline-block;}
+section.card h2{font-size:clamp(1.4rem,3vw,1.9rem);line-height:1.12;letter-spacing:-.025em;}
+section.card h3{margin:26px 0 10px;font-size:1.02rem;font-weight:800;}
+section.card h3:first-of-type{margin-top:20px;}
+.card-actions{display:flex;gap:6px;flex:0 0 auto;}
+.anchor-btn{
+  width:36px;height:36px;display:grid;place-items:center;border:2px solid var(--border);
+  background:var(--surface-alt);color:var(--muted);text-decoration:none;font-family:var(--font-mono);font-weight:900;
+}
+.anchor-btn:hover{color:var(--text);background:var(--surface);}
+
+.result{
+  margin:18px 0 0;padding:14px 16px;border:var(--bw) solid var(--border);border-left:8px solid var(--green);
+  background:var(--surface-alt);color:var(--muted);font-size:.9rem;
+}
+.result strong{color:var(--text);}
+
+/* ============================================================
+   CODE BLOCKS
+   ============================================================ */
+.code-wrap{margin:16px 0 20px;}
+.code-frame{border:var(--bw) solid var(--border);box-shadow:4px 4px 0 var(--border);overflow:hidden;background:var(--code-bg);}
+.code-top{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:9px 12px;background:var(--code-top);border-bottom:1px solid var(--code-line);
+}
+.code-left{display:flex;align-items:center;gap:10px;min-width:0;}
+.window-dots{display:flex;gap:5px;flex:0 0 auto;}
+.window-dots i{width:9px;height:9px;border-radius:50%;background:#3a3f39;display:block;}
+.code-label{
+  font-family:var(--font-mono);font-size:.63rem;font-weight:900;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--green);flex:0 0 auto;
+}
+.code-file{font-family:var(--font-mono);font-size:.66rem;color:#8b9587;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.copy-btn{
+  flex:0 0 auto;min-width:76px;min-height:30px;border:2px solid #3a3f39;background:#171a17;
+  color:#d9ded6;font-family:var(--font-mono);font-size:.63rem;font-weight:900;text-transform:uppercase;
+  letter-spacing:.04em;cursor:pointer;padding:0 10px;
+}
+.copy-btn:hover{border-color:var(--green);color:var(--green);}
+.copy-btn.is-copied{background:var(--green);border-color:var(--green);color:var(--ink-on-green);}
+pre{margin:0;overflow:auto;max-height:520px;padding:16px 18px;}
+pre code{color:var(--code-text);font-size:.82rem;line-height:1.7;white-space:pre;font-family:var(--font-mono);}
+
+/* ============================================================
+   TABLE / CHECKLIST
+   ============================================================ */
+.table-wrap{overflow:auto;margin:18px 0 4px;border:var(--bw) solid var(--border);}
+table{width:100%;min-width:480px;border-collapse:collapse;}
+th,td{padding:13px 16px;text-align:left;border-bottom:var(--bw) solid var(--border);}
+tr:last-child td{border-bottom:0;}
+th{
+  font-family:var(--font-mono);font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;
+  background:var(--surface-alt);color:var(--text);
+}
+td{font-size:.86rem;color:var(--muted);}
+td a{color:var(--green-dark);text-decoration:underline;text-underline-offset:3px;font-weight:700;}
+
+.checklist{list-style:none;padding:0;display:grid;gap:9px;}
+.checklist li{
+  position:relative;margin:0;padding:12px 14px 12px 46px;border:var(--bw) solid var(--border);
+  background:var(--surface-alt);min-height:44px;display:flex;align-items:center;font-size:.88rem;color:var(--text);
+}
+.checklist li::before{
+  content:"✓";position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  width:22px;height:22px;display:grid;place-items:center;background:var(--green);color:var(--ink-on-green);
+  border:2px solid var(--border);font-size:.7rem;font-weight:950;
+}
+
+.step-footer{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:26px;padding-top:16px;border-top:var(--bw) solid var(--border);
+}
+.step-status{font-family:var(--font-mono);font-size:.66rem;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.05em;}
+.next-step{
+  display:inline-flex;align-items:center;gap:6px;color:var(--text);text-decoration:none;font-size:.82rem;font-weight:900;
+  border:2px solid var(--border);padding:8px 12px;background:var(--surface-alt);
+}
+.next-step:hover{background:var(--green);color:var(--ink-on-green);}
+
+/* status indicators */
+.status{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;}
+.status .bullet{width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto;}
+.status.ready{color:var(--green-dark);}
+.status.warn{color:#8a6d00;}
+html[data-theme="dark"] .status.warn{color:var(--yellow);}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.site-footer{max-width:1440px;margin:0 auto;padding:10px 20px 40px;position:relative;z-index:1;}
+.footer-inner{
+  border-top:var(--bw) solid var(--border);padding-top:20px;
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;
+  text-align:center;color:var(--muted);font-size:.8rem;
+}
+.footer-inner a{color:var(--green-dark);font-weight:900;text-decoration:none;}
+.footer-inner a:hover{text-decoration:underline;text-underline-offset:3px;}
+
+/* ============================================================
+   FLOATING CONTROLS
+   ============================================================ */
+.mobile-backdrop{display:none;}
+.backtop{
+  position:fixed;right:20px;bottom:20px;width:48px;height:48px;
+  border:var(--bw) solid var(--border);background:var(--surface);color:var(--text);
+  display:grid;place-items:center;font-size:1.1rem;font-weight:900;cursor:pointer;
+  box-shadow:5px 5px 0 var(--border);opacity:0;transform:translateY(10px);pointer-events:none;
+  transition:opacity .15s ease, transform .15s ease;z-index:1200;
+}
+.backtop.show{opacity:1;transform:none;pointer-events:auto;}
+.backtop:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--border);}
+.toast{
+  position:fixed;left:50%;bottom:22px;transform:translate(-50%,14px);padding:11px 16px;
+  border:var(--bw) solid var(--border);background:var(--green);color:var(--ink-on-green);
+  font-family:var(--font-mono);font-size:.76rem;font-weight:900;opacity:0;pointer-events:none;
+  box-shadow:5px 5px 0 var(--border);transition:opacity .15s ease, transform .15s ease;z-index:1300;
+}
+.toast.show{opacity:1;transform:translate(-50%,0);}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width:1080px){
+  :root{--rail:270px;}
+  .hero-stats{grid-template-columns:1fr;}
+  .hero-stat{border-right:0;border-bottom:var(--bw) solid var(--border);}
+  .hero-stat:last-child{border-bottom:0;}
+}
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr;}
+  .sidebar{
+    position:fixed;top:0;left:0;bottom:0;width:min(340px,88vw);max-height:none;
+    transform:translateX(-102%);transition:transform .22s ease;z-index:2500;
+  }
+  .sidebar.open{transform:none;}
+  .menu-btn{display:inline-flex;}
+  .search-trigger{display:none;}
+  .mobile-search-btn{display:inline-flex;}
+  .mobile-backdrop{
+    position:fixed;inset:0;background:color-mix(in srgb, var(--border) 45%, transparent);
+    z-index:2400;opacity:0;pointer-events:none;transition:opacity .2s ease;
+  }
+  .mobile-backdrop.show{opacity:1;pointer-events:auto;}
+}
+@media (max-width:640px){
+  :root{--header:60px;}
+  .topbar-inner{padding:0 14px;}
+  .brand-sub{display:none;}
+  .tb-link .label{display:none;}
+  .tb-link{width:38px;padding:0;}
+  .shell{padding:20px 14px 70px;}
+  .hero{padding:26px 20px;}
+  .hero h1{font-size:2.5rem;}
+  section.card{padding:24px 18px;}
+  pre{max-height:420px;padding:14px;}
+  pre code{font-size:.76rem;}
+  .code-file{display:none;}
+  .step-footer{flex-direction:column;align-items:flex-start;}
+}
+
+/* ============================================================
+   REDUCED MOTION / PRINT
+   ============================================================ */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:.001ms !important;animation-duration:.001ms !important;}
+}
+@media print{
+  body::before{display:none;}
+  .topbar,.sidebar,.mobile-backdrop,.backtop,.toast,.progress,.copy-btn,.anchor-btn,.hero-cta,.search-overlay{display:none !important;}
+  .shell{display:block;padding:0;max-width:none;}
+  main{max-width:none;}
+  .hero,section.card{box-shadow:none;border-color:#111;break-inside:avoid;}
+  pre{max-height:none;overflow:visible;}
+  a{color:#111 !important;text-decoration:underline;}
+  .site-footer{position:static;}
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to guide content</a>
+<div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="tb-btn menu-btn" id="menuBtn" type="button" aria-label="Open table of contents" aria-controls="sidebar" aria-expanded="false">☰</button>
+    <a class="brand" href="#top">
+      <span class="brand-mark" aria-hidden="true">H</span>
+      <span class="brand-text">
+        <span class="brand-title">HADOOP / WSL 2</span>
+        <span class="brand-sub">Field Manual — Single Node</span>
+      </span>
+    </a>
+    <span class="topbar-spacer"></span>
+    <button class="tb-btn search-trigger" id="searchTrigger" type="button" aria-haspopup="dialog">
+      <span>Search this manual…</span><span class="kbd">/</span>
+    </button>
+    <button class="tb-btn mobile-search-btn" id="mobileSearchBtn" type="button" aria-label="Search this manual">⌕</button>
+    <a class="tb-link" href="https://ollama.com/S00K/alice" target="_blank" rel="noopener noreferrer"><span class="label">ALICE&nbsp;LLM</span><span class="arrow">↗</span></a>
+    <a class="tb-link" href="https://github.com/Stylish00killer" target="_blank" rel="noopener noreferrer"><span class="label">S00K</span><span class="arrow">↗</span></a>
+    <button class="tb-btn" id="themeBtn" type="button" aria-label="Switch theme" title="Switch theme">◐</button>
+    <button class="tb-btn" id="printBtn" type="button" aria-label="Print this manual" title="Print this manual">⎙</button>
+  </div>
+</header>
+
+<div class="mobile-backdrop" id="backdrop"></div>
+
+<div class="search-overlay" id="searchOverlay" role="dialog" aria-modal="true" aria-label="Search the manual">
+  <div class="search-panel">
+    <div class="search-field">
+      <span class="glyph" aria-hidden="true">/</span>
+      <input id="searchInput" type="search" placeholder="Search steps, commands, topics…" aria-label="Search guide sections" autocomplete="off">
+      <span class="search-esc">ESC</span>
+    </div>
+    <div class="search-results" id="searchResults"></div>
+  </div>
+</div>
+
+<div class="shell" id="top">
+  <aside class="sidebar" id="sidebar" aria-label="Table of contents">
+    <div class="sidebar-head">
+      <span class="sidebar-title">Contents</span>
+      <span class="sidebar-progress" id="sidebarProgress">00 / 17</span>
+    </div>
+    <nav class="toc" id="toc">
+      <a class="toc-link" href="#methodology" aria-label="Go to Methodology"><span class="toc-index">00</span><span>Methodology</span></a>
+      <a class="toc-link" href="#install" aria-label="Go to Install WSL 2"><span class="toc-index">01</span><span>Install WSL 2</span></a>
+      <a class="toc-link" href="#java" aria-label="Go to Java 17 and tools"><span class="toc-index">02</span><span>Java 17 &amp; tools</span></a>
+      <a class="toc-link" href="#download" aria-label="Go to Download Hadoop"><span class="toc-index">03</span><span>Download Hadoop</span></a>
+      <a class="toc-link" href="#local" aria-label="Go to Install Hadoop"><span class="toc-index">04</span><span>Install Hadoop</span></a>
+      <a class="toc-link" href="#bashrc" aria-label="Go to bashrc environment"><span class="toc-index">05</span><span>.bashrc environment</span></a>
+      <a class="toc-link" href="#ssh" aria-label="Go to Passwordless SSH"><span class="toc-index">06</span><span>Passwordless SSH</span></a>
+      <a class="toc-link" href="#data" aria-label="Go to HDFS directories"><span class="toc-index">07</span><span>HDFS directories</span></a>
+      <a class="toc-link" href="#config" aria-label="Go to XML configuration"><span class="toc-index">08</span><span>XML configuration</span></a>
+      <a class="toc-link" href="#format" aria-label="Go to Format NameNode"><span class="toc-index">09</span><span>Format NameNode</span></a>
+      <a class="toc-link" href="#startup" aria-label="Go to Start cluster"><span class="toc-index">10</span><span>Start cluster</span></a>
+      <a class="toc-link" href="#verify" aria-label="Go to Verify dashboards"><span class="toc-index">11</span><span>Verify dashboards</span></a>
+      <a class="toc-link" href="#aliases" aria-label="Go to Hadoop aliases"><span class="toc-index">12</span><span>Hadoop aliases</span></a>
+      <a class="toc-link" href="#powershell" aria-label="Go to PowerShell shortcuts"><span class="toc-index">13</span><span>PowerShell shortcuts</span></a>
+      <a class="toc-link" href="#routine" aria-label="Go to Routine startup"><span class="toc-index">14</span><span>Routine startup</span></a>
+      <a class="toc-link" href="#troubleshooting" aria-label="Go to Troubleshooting"><span class="toc-index">15</span><span>Troubleshooting</span></a>
+      <a class="toc-link" href="#checklist" aria-label="Go to Final checklist"><span class="toc-index">16</span><span>Final checklist</span></a>
+      <div class="toc-divider"></div>
+      <a class="toc-link" href="#scope" aria-label="Go to Scope note"><span class="toc-index">§</span><span>Scope note</span></a>
+    </nav>
+    <dl class="sidebar-meta">
+      <div class="meta-row"><dt>Version</dt><dd>Hadoop 3.5.0</dd></div>
+      <div class="meta-row"><dt>Runtime</dt><dd>OpenJDK 17</dd></div>
+      <div class="meta-row"><dt>Platform</dt><dd>WSL 2 / Ubuntu</dd></div>
+      <div class="meta-row"><dt>Est. time</dt><dd>45–60 min</dd></div>
+      <div class="meta-row"><dt>Difficulty</dt><dd>Intermediate</dd></div>
+    </dl>
+    <div class="sidebar-note"><strong>Designed for repeat use.</strong><br>Search, copy commands, jump between steps, or print a clean reference.</div>
+  </aside>
+
+  <main id="content" tabindex="-1">
+
+    <section class="hero" id="overview">
+      <span class="corner-mark tl" aria-hidden="true">N 00.00</span>
+      <span class="corner-mark tr" aria-hidden="true">REV 1.2</span>
+      <div class="hero-kicker"><span class="dot" aria-hidden="true"></span>Field Manual / 01 — Local Data Platform</div>
+      <h1>Apache Hadoop<br><span class="accent">3.5.0</span> on WSL 2</h1>
+      <p class="hero-lead">A practical, single-node setup manual for installing Hadoop inside Ubuntu on WSL 2, configuring HDFS and YARN, verifying the cluster, and adding repeatable shell aliases.</p>
+      <div class="hero-tags">
+        <span class="tag is-green">HADOOP 3.5.0</span>
+        <span class="tag">JAVA 17</span>
+        <span class="tag">WSL 2</span>
+        <span class="tag">WINDOWS</span>
+        <span class="tag">HDFS + YARN</span>
+        <span class="tag">SINGLE NODE</span>
+      </div>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#install">Start setup →</a>
+        <a class="btn" href="#checklist">Jump to checklist</a>
+      </div>
+      <div class="hero-stats" aria-label="Guide overview">
+        <div class="hero-stat"><strong>16</strong><span>Guided steps</span></div>
+        <div class="hero-stat"><strong>3</strong><span>Daily aliases</span></div>
+        <div class="hero-stat"><strong>2</strong><span>Web dashboards</span></div>
+      </div>
+      <div class="hero-notice"><strong>Scope.</strong> This manual follows the WSL 2 methodology in the supplied source while intentionally excluding the native Windows helper-binary route and all Python/PySide6 application material.</div>
+    </section>
+
+    <section class="card" id="methodology">
+      <div class="section-head">
+        <div><div class="section-kicker">00 — Overview</div><h2>Methodology used</h2></div>
+      </div>
+      <p>The supplied procedure evolves from a native Windows installation toward WSL 2 as the recommended approach. The WSL path keeps Hadoop inside a normal Linux environment, avoiding Windows-specific helper binaries and Windows path configuration. The later setup in the source uses Hadoop 3.5.0 with OpenJDK 17, installs Hadoop under <code>/usr/local/hadoop</code>, configures the four Hadoop XML files, formats the NameNode once, starts HDFS and YARN, verifies with <code>jps</code>, and exposes the web interfaces on localhost.</p>
+    </section>
+
+    <section class="card" id="install">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 01</div><h2>Install WSL 2 and Ubuntu</h2></div>
+      </div>
+      <p>Perform the Windows-side installation from an elevated PowerShell window.</p>
+      <ol>
+        <li>Open <strong>PowerShell as Administrator</strong>.</li>
+        <li>Run:</li>
+      </ol>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">powershell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>wsl --install</code></pre></div></div>
+      <ol start="3">
+        <li>Restart Windows if prompted.</li>
+        <li>Launch <strong>Ubuntu</strong> from the Start menu.</li>
+        <li>Create your Linux username and password when Ubuntu asks for them.</li>
+      </ol>
+      <p class="result"><strong>Result.</strong> You should now have an Ubuntu shell running under WSL 2. All remaining Hadoop commands in this document are executed inside that Linux terminal unless a step explicitly says <strong>PowerShell</strong>.</p>
+    </section>
+
+    <section class="card" id="java">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 02</div><h2>Install Java 17 and basic tools</h2></div>
+      </div>
+      <p>The source document records a Java-version mismatch with Hadoop 3.5.0 and then switches the environment to OpenJDK 17. Follow that working configuration for the WSL installation.</p>
+      <p>Inside Ubuntu:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>sudo apt update
+sudo apt install openjdk-17-jdk wget gnupg -y</code></pre></div></div>
+      <p>Check Java:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>java -version</code></pre></div></div>
+      <p>Locate the Java installation directory:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>readlink -f /usr/bin/java | sed "s:/bin/java::"</code></pre></div></div>
+      <p>For the source setup, this resolves to a path such as:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>/usr/lib/jvm/java-17-openjdk-amd64</code></pre></div></div>
+    </section>
+
+    <section class="card" id="download">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 03</div><h2>Download Hadoop 3.5.0</h2></div>
+      </div>
+      <p>Create a temporary working directory and download the official Hadoop 3.5.0 release archive.</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>mkdir -p ~/hadoop-setup
+cd ~/hadoop-setup
+
+wget https://dlcdn.apache.org/hadoop/common/hadoop-3.5.0/hadoop-3.5.0.tar.gz</code></pre></div></div>
+      <p>For the verification workflow used in the source, also download the SHA-512 file, the PGP signature, and the Apache release keys:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>wget https://downloads.apache.org/hadoop/common/hadoop-3.5.0/hadoop-3.5.0.tar.gz.sha512
+wget https://downloads.apache.org/hadoop/common/hadoop-3.5.0/hadoop-3.5.0.tar.gz.asc
+wget https://downloads.apache.org/hadoop/common/KEYS</code></pre></div></div>
+      <p>Verify the archive checksum:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>sha512sum hadoop-3.5.0.tar.gz
+cat hadoop-3.5.0.tar.gz.sha512</code></pre></div></div>
+      <p>The two SHA-512 values should match exactly.</p>
+      <p>Verify the PGP signature:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>gpg --import KEYS
+gpg --verify hadoop-3.5.0.tar.gz.asc hadoop-3.5.0.tar.gz</code></pre></div></div>
+    </section>
+
+    <section class="card" id="local">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 04</div><h2>Install Hadoop under <code>/usr/local/hadoop</code></h2></div>
+      </div>
+      <p>Extract the archive and move it into the standard location used by the source setup.</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>cd ~/hadoop-setup
+tar -xvzf hadoop-3.5.0.tar.gz
+sudo mv hadoop-3.5.0 /usr/local/hadoop
+sudo chown -R $USER:$USER /usr/local/hadoop</code></pre></div></div>
+      <p>Confirm the binary can execute:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>/usr/local/hadoop/bin/hadoop version</code></pre></div></div>
+      <p>A successful result should report Hadoop 3.5.0 and its build metadata.</p>
+      <p>Remove the temporary download directory after verification:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>cd ~
+rm -rf ~/hadoop-setup</code></pre></div></div>
+    </section>
+
+    <section class="card" id="bashrc">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 05</div><h2>Add the Hadoop environment to <code>.bashrc</code></h2></div>
+      </div>
+      <p>Open the shell profile:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>nano ~/.bashrc</code></pre></div></div>
+      <p>Append the following block. The Java path should match the path returned by the lookup command above.</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export HADOOP_HOME=/usr/local/hadoop
+export HADOOP_INSTALL=$HADOOP_HOME
+export HADOOP_MAPPED=$HADOOP_HOME
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export YARN_HOME=$HADOOP_HOME
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin</code></pre></div></div>
+      <p>Save the file and reload it:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>source ~/.bashrc</code></pre></div></div>
+      <p>Verify the environment:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>echo $JAVA_HOME
+echo $HADOOP_HOME
+hadoop version</code></pre></div></div>
+    </section>
+
+    <section class="card" id="ssh">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 06</div><h2>Configure passwordless SSH for localhost</h2></div>
+      </div>
+      <p>The source procedure uses local OpenSSH so that Hadoop scripts can manage the local daemons.</p>
+      <p>Install the server:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>sudo apt install openssh-server -y
+sudo service ssh start</code></pre></div></div>
+      <p>Generate an RSA key without a passphrase:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa</code></pre></div></div>
+      <p>Authorize the key and set permissions:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>cat ~/.ssh/id_rsa.pub &gt;&gt; ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys</code></pre></div></div>
+      <p>Test localhost SSH:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>ssh localhost</code></pre></div></div>
+      <p>Type <code>yes</code> if prompted. Once the connection opens, run <code>exit</code> to return to the main shell.</p>
+    </section>
+
+    <section class="card" id="data">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 07</div><h2>Create HDFS data directories</h2></div>
+      </div>
+      <p>Create the local directories used by the NameNode and DataNode.</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>mkdir -p /usr/local/hadoop/data/namenode
+mkdir -p /usr/local/hadoop/data/datanode</code></pre></div></div>
+    </section>
+
+    <section class="card" id="config">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 08</div><h2>Configure Hadoop XML files</h2></div>
+      </div>
+      <p>All four files live in <code>/usr/local/hadoop/etc/hadoop</code>. The source methodology configures a single-node cluster as follows.</p>
+      <h3>8.1 <code>core-site.xml</code></h3>
+      <p>Open:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>nano /usr/local/hadoop/etc/hadoop/core-site.xml</code></pre></div></div>
+      <p>Use:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">xml</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;
+&lt;configuration&gt;
+    &lt;property&gt;
+        &lt;name&gt;fs.defaultFS&lt;/name&gt;
+        &lt;value&gt;hdfs://localhost:9000&lt;/value&gt;
+    &lt;/property&gt;
+&lt;/configuration&gt;</code></pre></div></div>
+      <h3>8.2 <code>hdfs-site.xml</code></h3>
+      <p>Use:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">xml</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;
+&lt;configuration&gt;
+    &lt;property&gt;
+        &lt;name&gt;dfs.replication&lt;/name&gt;
+        &lt;value&gt;1&lt;/value&gt;
+    &lt;/property&gt;
+    &lt;property&gt;
+        &lt;name&gt;dfs.namenode.name.dir&lt;/name&gt;
+        &lt;value&gt;file:///usr/local/hadoop/data/namenode&lt;/value&gt;
+    &lt;/property&gt;
+    &lt;property&gt;
+        &lt;name&gt;dfs.datanode.data.dir&lt;/name&gt;
+        &lt;value&gt;file:///usr/local/hadoop/data/datanode&lt;/value&gt;
+    &lt;/property&gt;
+&lt;/configuration&gt;</code></pre></div></div>
+      <h3>8.3 <code>mapred-site.xml</code></h3>
+      <p>Use:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">xml</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;
+&lt;configuration&gt;
+    &lt;property&gt;
+        &lt;name&gt;mapreduce.framework.name&lt;/name&gt;
+        &lt;value&gt;yarn&lt;/value&gt;
+    &lt;/property&gt;
+    &lt;property&gt;
+        &lt;name&gt;yarn.app.mapreduce.am.env&lt;/name&gt;
+        &lt;value&gt;HADOOP_MAPRED_HOME=/usr/local/hadoop&lt;/value&gt;
+    &lt;/property&gt;
+    &lt;property&gt;
+        &lt;name&gt;mapreduce.map.env&lt;/name&gt;
+        &lt;value&gt;HADOOP_MAPRED_HOME=/usr/local/hadoop&lt;/value&gt;
+    &lt;/property&gt;
+    &lt;property&gt;
+        &lt;name&gt;mapreduce.reduce.env&lt;/name&gt;
+        &lt;value&gt;HADOOP_MAPRED_HOME=/usr/local/hadoop&lt;/value&gt;
+    &lt;/property&gt;
+&lt;/configuration&gt;</code></pre></div></div>
+      <h3>8.4 <code>yarn-site.xml</code></h3>
+      <p>Use:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">xml</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;
+&lt;configuration&gt;
+    &lt;property&gt;
+        &lt;name&gt;yarn.nodemanager.aux-services&lt;/name&gt;
+        &lt;value&gt;mapreduce_shuffle&lt;/value&gt;
+    &lt;/property&gt;
+    &lt;property&gt;
+        &lt;name&gt;yarn.nodemanager.env-whitelist&lt;/name&gt;
+        &lt;value&gt;JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_MAPRED_HOME&lt;/value&gt;
+    &lt;/property&gt;
+&lt;/configuration&gt;</code></pre></div></div>
+      <h3>8.5 Set Java inside <code>hadoop-env.sh</code></h3>
+      <p>Open:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>nano /usr/local/hadoop/etc/hadoop/hadoop-env.sh</code></pre></div></div>
+      <p>Ensure it contains:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64</code></pre></div></div>
+    </section>
+
+    <section class="card" id="format">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 09</div><h2>Format the NameNode once</h2></div>
+      </div>
+      <p>This operation initializes the HDFS metadata. The source explicitly warns to perform it only once for a fresh cluster because repeating it can remove existing cluster metadata.</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>hdfs namenode -format</code></pre></div></div>
+    </section>
+
+    <section class="card" id="startup">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 10</div><h2>Start the Hadoop cluster</h2></div>
+      </div>
+      <p>Start HDFS first:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>start-dfs.sh</code></pre></div></div>
+      <p>Then start YARN:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>start-yarn.sh</code></pre></div></div>
+      <p>Verify the Java daemons:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>jps</code></pre></div></div>
+      <p>For the single-node configuration, the expected processes are:</p>
+      <ul>
+        <li>NameNode</li>
+        <li>DataNode</li>
+        <li>SecondaryNameNode</li>
+        <li>ResourceManager</li>
+        <li>NodeManager</li>
+        <li>Jps</li>
+      </ul>
+    </section>
+
+    <section class="card" id="verify">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 11</div><h2>Verify the Hadoop web interfaces</h2></div>
+      </div>
+      <p>From Windows Edge or Chrome, use:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Service</th><th>URL</th></tr></thead>
+          <tbody>
+            <tr><td>HDFS NameNode UI</td><td><a href="http://localhost:9870" rel="noopener" target="_blank">http://localhost:9870</a></td></tr>
+            <tr><td>YARN ResourceManager UI</td><td><a href="http://localhost:8088" rel="noopener" target="_blank">http://localhost:8088</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="aliases">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 12</div><h2>Add one-word Hadoop aliases to <code>.bashrc</code></h2></div>
+      </div>
+      <p>This is the main repeatability improvement in the source document: combine the HDFS and YARN startup commands into one shell alias, do the same for shutdown, and keep <code>jps</code> as the status check.</p>
+      <p>Open the profile:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>nano ~/.bashrc</code></pre></div></div>
+      <p>Append:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>alias start-hadoop='start-dfs.sh &amp;&amp; start-yarn.sh'
+alias stop-hadoop='stop-yarn.sh &amp;&amp; stop-dfs.sh'
+alias hadoop-status='jps'</code></pre></div></div>
+      <p>Reload:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>source ~/.bashrc</code></pre></div></div>
+      <p>Verify the aliases:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>start-hadoop
+hadoop-status</code></pre></div></div>
+      <p>To stop the cluster cleanly:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>stop-hadoop
+hadoop-status</code></pre></div></div>
+    </section>
+
+    <section class="card" id="powershell">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 13</div><h2>Optional PowerShell shortcuts to WSL aliases</h2></div>
+      </div>
+      <p>The source also shows how to invoke the Linux aliases directly from a Windows PowerShell session. These are Windows PowerShell functions, not replacements for the Linux aliases.</p>
+      <p>Open the PowerShell profile:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">powershell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>notepad $PROFILE</code></pre></div></div>
+      <p>Add:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>function Start-Hadoop { wsl bash -ic "start-hadoop" }
+function Stop-Hadoop  { wsl bash -ic "stop-hadoop" }
+function Hadoop-Jps   { wsl bash -ic "hadoop-status" }</code></pre></div></div>
+      <p>Save the file and reload it:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">powershell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>. $PROFILE</code></pre></div></div>
+      <p>Then these commands can be used directly in PowerShell:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">powershell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>Start-Hadoop
+Hadoop-Jps
+Stop-Hadoop</code></pre></div></div>
+    </section>
+
+    <section class="card" id="routine">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 14</div><h2>Routine startup after reboot</h2></div>
+      </div>
+      <p>Once the installation is complete, the recurring workflow is intentionally short:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code># Inside WSL Ubuntu
+source ~/.bashrc
+start-hadoop
+hadoop-status</code></pre></div></div>
+      <p>Or from Windows PowerShell:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>Start-Hadoop
+Hadoop-Jps</code></pre></div></div>
+    </section>
+
+    <section class="card" id="troubleshooting">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 15</div><h2>Clean shutdown and stale PID troubleshooting</h2></div>
+      </div>
+      <p>Always stop Hadoop before closing the environment:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>stop-hadoop</code></pre></div></div>
+      <p>If an unexpected reboot leaves stale Hadoop PID files and the next startup reports existing process locks, the source suggests removing orphaned PID files:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>rm -f /tmp/hadoop-*.pid</code></pre></div></div>
+      <p>Then retry:</p>
+      <div class="code-wrap"><div class="code-frame"><div class="code-top"><div class="code-left"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="code-label">shell</span></div><button class="copy-btn" type="button">Copy</button></div><pre><code>start-hadoop
+hadoop-status</code></pre></div></div>
+    </section>
+
+    <section class="card" id="checklist">
+      <div class="section-head">
+        <div><div class="section-kicker">Step 16</div><h2>Final checklist</h2></div>
+        <span class="status ready"><span class="bullet"></span>Ready when checked</span>
+      </div>
+      <ul class="checklist">
+        <li>WSL 2 and Ubuntu are installed.</li>
+        <li>Java 17 is installed and <code>JAVA_HOME</code> points to the Java 17 directory.</li>
+        <li>Hadoop 3.5.0 is installed at <code>/usr/local/hadoop</code>.</li>
+        <li>Hadoop's <code>bin</code> and <code>sbin</code> directories are on <code>PATH</code>.</li>
+        <li>Passwordless localhost SSH works.</li>
+        <li>HDFS data directories exist.</li>
+        <li>The four Hadoop XML files are configured for the single-node setup.</li>
+        <li><code>hdfs namenode -format</code> has been run once for the fresh cluster.</li>
+        <li><code>start-hadoop</code> starts HDFS and YARN.</li>
+        <li><code>hadoop-status</code> reports the expected daemons.</li>
+        <li><code>stop-hadoop</code> shuts the cluster down cleanly.</li>
+        <li>The NameNode and ResourceManager UIs open at ports 9870 and 8088.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="scope">
+      <div class="section-head">
+        <div><div class="section-kicker">§ Appendix</div><h2>Scope note</h2></div>
+      </div>
+      <p>This document deliberately omits the native Windows <code>winutils.exe</code>/<code>hadoop.dll</code> installation route, native Windows environment-variable editing, and the Python/PySide6 desktop-controller/application-development material present later in the supplied PDF. The operational path here is WSL 2 Ubuntu plus Hadoop shell configuration and aliases.</p>
+    </section>
+
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>Made with code and caffeine by <a href="https://ollama.com/S00K/alice" target="_blank" rel="noopener noreferrer">ALICE LLM</a> — developed by <a href="https://github.com/Stylish00killer" target="_blank" rel="noopener noreferrer">S00K</a></span>
+  </div>
+</footer>
+
+<button class="backtop" id="backtop" type="button" aria-label="Back to top" title="Back to top">↑</button>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const progressBar = document.getElementById('progressBar');
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('backdrop');
+  const menuBtn = document.getElementById('menuBtn');
+  const themeBtn = document.getElementById('themeBtn');
+  const printBtn = document.getElementById('printBtn');
+  const backtop = document.getElementById('backtop');
+  const toast = document.getElementById('toast');
+  const searchTrigger = document.getElementById('searchTrigger');
+  const mobileSearchBtn = document.getElementById('mobileSearchBtn');
+  const searchOverlay = document.getElementById('searchOverlay');
+  const searchInput = document.getElementById('searchInput');
+  const searchResultsEl = document.getElementById('searchResults');
+  const tocLinks = [...document.querySelectorAll('.toc-link')];
+  const sections = [...document.querySelectorAll('main section.card')];
+  const sidebarProgress = document.getElementById('sidebarProgress');
+  const totalSections = sections.length;
+
+  /* ---------- step footers (next-step navigation) ---------- */
+  sections.forEach((section, index) => {
+    const heading = section.querySelector('h2');
+    if (!heading) return;
+
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+    const anchor = document.createElement('a');
+    anchor.className = 'anchor-btn';
+    anchor.href = '#' + section.id;
+    anchor.setAttribute('aria-label', 'Link to ' + heading.textContent.trim());
+    anchor.title = 'Link to this section';
+    anchor.textContent = '#';
+    actions.appendChild(anchor);
+    const head = section.querySelector('.section-head');
+    if (head) head.appendChild(actions);
+
+    const kicker = section.querySelector('.section-kicker')?.textContent || '';
+    const isStep = /^Step\s*\d+/i.test(kicker);
+    if (isStep) {
+      const footer = document.createElement('div');
+      footer.className = 'step-footer';
+      const num = kicker.replace(/[^\d]/g, '').padStart(2, '0');
+      footer.innerHTML = '<span class="step-status">Position ' + num + ' / 16</span>';
+      const next = sections[index + 1];
+      if (next) {
+        const nextH = next.querySelector('h2');
+        const a = document.createElement('a');
+        a.className = 'next-step';
+        a.href = '#' + next.id;
+        a.textContent = 'Next: ' + (nextH ? nextH.textContent.trim() : '') + ' →';
+        footer.appendChild(a);
+      }
+      section.appendChild(footer);
+    }
+  });
+
+  /* ---------- toast ---------- */
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
+  }
+
+  /* ---------- copy buttons (event delegation) ---------- */
+  document.addEventListener('click', async (e) => {
+    const button = e.target.closest('.copy-btn');
+    if (!button) return;
+    const code = button.closest('.code-frame')?.querySelector('pre code')?.innerText || '';
+    try {
+      await navigator.clipboard.writeText(code);
+      button.textContent = 'Copied ✓';
+      button.classList.add('is-copied');
+      showToast('Command copied to clipboard');
+      setTimeout(() => { button.textContent = 'Copy'; button.classList.remove('is-copied'); }, 1300);
+    } catch {
+      button.textContent = 'Error';
+      showToast('Clipboard access was blocked');
+      setTimeout(() => { button.textContent = 'Copy'; }, 1300);
+    }
+  });
+
+  /* ---------- mobile drawer ---------- */
+  function closeMenu() {
+    sidebar.classList.remove('open');
+    backdrop.classList.remove('show');
+    menuBtn?.setAttribute('aria-expanded', 'false');
+  }
+  menuBtn?.addEventListener('click', () => {
+    const open = sidebar.classList.toggle('open');
+    backdrop.classList.toggle('show', open);
+    menuBtn.setAttribute('aria-expanded', String(open));
+  });
+  backdrop.addEventListener('click', closeMenu);
+  tocLinks.forEach(link => link.addEventListener('click', closeMenu));
+
+  /* ---------- search overlay ---------- */
+  const index = tocLinks.map(link => {
+    const id = link.getAttribute('href').slice(1);
+    const section = document.getElementById(id);
+    const idxLabel = link.querySelector('.toc-index')?.textContent || '';
+    const title = link.querySelector('span:last-child')?.textContent || '';
+    return { id, idxLabel, title, haystack: (title + ' ' + (section?.textContent || '')).toLowerCase() };
+  });
+
+  function renderResults(query) {
+    const q = query.trim().toLowerCase();
+    const matches = q ? index.filter(it => it.haystack.includes(q)) : index;
+    searchResultsEl.innerHTML = '';
+    if (!matches.length) {
+      searchResultsEl.innerHTML = '<div class="search-empty">No matching sections.</div>';
+      return;
+    }
+    matches.forEach((it, i) => {
+      const a = document.createElement('a');
+      a.className = 'search-result' + (i === 0 ? ' is-active' : '');
+      a.href = '#' + it.id;
+      a.innerHTML = '<span class="idx">' + it.idxLabel + '</span><span>' + it.title + '</span>';
+      a.addEventListener('click', closeSearch);
+      searchResultsEl.appendChild(a);
+    });
+  }
+
+  function openSearch() {
+    searchOverlay.classList.add('open');
+    searchInput.value = '';
+    renderResults('');
+    searchInput.focus();
+  }
+  function closeSearch() {
+    searchOverlay.classList.remove('open');
+  }
+  searchTrigger?.addEventListener('click', openSearch);
+  mobileSearchBtn?.addEventListener('click', openSearch);
+  searchOverlay.addEventListener('click', (e) => { if (e.target === searchOverlay) closeSearch(); });
+  searchInput.addEventListener('input', () => renderResults(searchInput.value));
+
+  document.addEventListener('keydown', (e) => {
+    const inField = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+    if (e.key === '/' && !inField) { e.preventDefault(); openSearch(); }
+    if (e.key === 'Escape') { closeSearch(); closeMenu(); }
+    if (e.key === 'ArrowDown' && document.activeElement === searchInput) {
+      e.preventDefault();
+      searchResultsEl.querySelector('.search-result')?.focus();
+    }
+  });
+
+  /* ---------- scroll progress + active section ---------- */
+  function updateScroll() {
+    const doc = document.documentElement;
+    const max = Math.max(1, doc.scrollHeight - window.innerHeight);
+    const ratio = Math.max(0, Math.min(1, window.scrollY / max));
+    progressBar.style.width = (ratio * 100) + '%';
+    backtop.classList.toggle('show', window.scrollY > 520);
+  }
+  window.addEventListener('scroll', updateScroll, { passive: true });
+  window.addEventListener('resize', updateScroll);
+  updateScroll();
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const id = entry.target.id;
+      tocLinks.forEach(link => link.setAttribute('aria-current', link.getAttribute('href') === '#' + id ? 'true' : 'false'));
+      sections.forEach(s => s.classList.toggle('is-active', s.id === id));
+      const visibleIndex = sections.findIndex(s => s.id === id);
+      if (visibleIndex >= 0) {
+        sidebarProgress.textContent = String(visibleIndex).padStart(2, '0') + ' / ' + String(totalSections - 1).padStart(2, '0');
+      }
+    });
+  }, { rootMargin: '-20% 0px -68% 0px', threshold: 0.01 });
+  sections.forEach(s => observer.observe(s));
+
+  /* ---------- misc controls ---------- */
+  backtop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  printBtn.addEventListener('click', () => window.print());
+
+  function setTheme(theme) {
+    root.dataset.theme = theme;
+    localStorage.setItem('hadoop-guide-theme', theme);
+    themeBtn.textContent = theme === 'dark' ? '☼' : '◐';
+    themeBtn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  }
+  const saved = localStorage.getItem('hadoop-guide-theme');
+  setTheme(saved === 'dark' ? 'dark' : 'light');
+  themeBtn.addEventListener('click', () => setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+  document.querySelectorAll('a[target="_blank"]').forEach(a => a.setAttribute('referrerpolicy', 'no-referrer'));
+})();
+</script>
+</body>
+</html>
