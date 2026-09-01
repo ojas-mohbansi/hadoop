@@ -17,7 +17,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
 /* ==========================================================================
@@ -44,7 +44,8 @@
   --red: #FF5A5F;
   --blue: #4EA5FF;
 
-  --font-sans: "Manrope", "Inter", -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Space Grotesk", "Manrope", -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Archivo Black", "Space Grotesk", -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 
   --nav-h: 68px;
@@ -113,7 +114,7 @@ code{font-family:var(--font-mono);}
   padding:.1em .42em;border:1px solid var(--border-soft);background:var(--surface-2);
   color:var(--text);font-size:.86em;border-radius:4px;
 }
-h1,h2,h3,h4{font-family:var(--font-sans);font-weight:800;letter-spacing:-.01em;margin:0;}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:400;letter-spacing:-.015em;margin:0;}
 
 /* ==========================================================================
    3. TYPOGRAPHY SCALE
@@ -231,7 +232,7 @@ html[data-theme="dark"] .brand-mark{color:#04180A;}
 .hero-kicker{display:flex;align-items:center;gap:8px;margin-bottom:18px;}
 .hero-kicker .seed{width:8px;height:8px;border-radius:50%;background:var(--green-dark);}
 .hero h1{
-  font-size:clamp(2.6rem,6.2vw,4.6rem);line-height:.98;letter-spacing:-.02em;margin:0 0 20px;
+  font-size:clamp(2.6rem,6.2vw,4.6rem);line-height:.94;letter-spacing:-.03em;margin:0 0 20px;
 }
 .hero-lead{font-size:1.12rem;color:var(--text-muted);max-width:46ch;}
 .hero-specs{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px;}
@@ -269,7 +270,7 @@ html[data-theme="dark"] .brand-mark{color:#04180A;}
 @media (max-width:939px){.stat:nth-child(3n){border-right:none;}}
 @media (max-width:639px){.stat:nth-child(2n){border-right:none;}}
 .stat-label{display:block;font-family:var(--font-mono);font-size:.62rem;font-weight:700;letter-spacing:.08em;color:var(--text-muted);margin-bottom:6px;}
-.stat-value{display:block;font-size:1.2rem;font-weight:800;letter-spacing:-.01em;}
+.stat-value{display:block;font-family:var(--font-display);font-size:1.2rem;font-weight:400;letter-spacing:-.01em;}
 
 /* ==========================================================================
    10. CHAPTER DIVIDER
@@ -350,7 +351,7 @@ html[data-theme="dark"] .brand-mark{color:#04180A;}
 .step-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
 .step-meta{display:flex;align-items:center;gap:10px;}
 .step-num{
-  font-family:var(--font-mono);font-weight:800;font-size:1rem;
+  font-family:var(--font-display);font-weight:400;font-size:1.05rem;
   width:38px;height:38px;display:grid;place-items:center;border:2px solid var(--border);border-radius:6px;
   background:var(--surface-2);flex:0 0 auto;
 }
